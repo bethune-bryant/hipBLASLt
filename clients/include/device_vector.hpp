@@ -58,12 +58,36 @@ public:
     //! @param inc The increment.
     //! @param HMM         HipManagedMemory Flag.
     //!
-    explicit device_vector(size_t n, int64_t inc = 1, bool HMM = false)
+    explicit device_vector(size_t n, int64_t inc = 1, bool HMM = false, bool cleanup = true)
         : d_vector<T>{n * std::abs(inc), HMM}
         , m_n{n}
         , m_inc{inc}
         , m_data{this->device_vector_setup()}
+        , m_cleanup{cleanup}
     {
+    }
+
+    //!
+    //! @brief Constructor.
+    //! @param n The length of the vector.
+    //! @param inc The increment.
+    //! @param HMM         HipManagedMemory Flag.
+    //!
+    explicit device_vector(void* data, size_t n, int64_t inc = 1, bool HMM = false)
+        : d_vector<T>{n * std::abs(inc), HMM}
+        , m_n{n}
+        , m_inc{inc}
+    {
+        if(data != nullptr)
+        {
+            this->m_cleanup = false;
+            this->m_data    = (T*)data;
+        }
+        else
+        {
+            this->m_cleanup = true;
+            this->m_data    = this->device_vector_setup();
+        }
     }
 
     //!
@@ -71,8 +95,14 @@ public:
     //!
     ~device_vector()
     {
-        this->device_vector_teardown(m_data);
-        m_data = nullptr;
+        if(m_cleanup)
+        {
+            if(nullptr != this->m_data)
+            {
+                this->device_vector_teardown(m_data);
+                m_data = nullptr;
+            }
+        }
     }
 
     //!
@@ -154,4 +184,5 @@ private:
     size_t  m_n{};
     int64_t m_inc{};
     T*      m_data{};
+    bool m_cleanup{};
 };

@@ -292,6 +292,19 @@ Arguments:
   - print_solution_found: c_bool
   - print_kernel_info: c_bool
   - flush: c_bool
+  - dA: c_uint64
+  - dB: c_uint64
+  - dC: c_uint64
+  - dD: c_uint64
+  - dE: c_uint64
+  - dScaleA: c_uint64
+  - dScaleB: c_uint64
+  - dScaleC: c_uint64
+  - dScaleD: c_uint64
+  - dScaleE: c_uint64
+  - dBias: c_uint64
+  - dScaleAlphaVec: c_uint64
+  - dAmaxD: c_uint64
 
 # These named dictionary lists [ {dict1}, {dict2}, etc. ] supply subsets of
 # test arguments in a structured way. The dictionaries are applied to the test
@@ -394,3 +407,16 @@ Defaults:
   compute_input_typeA: hipblaslt_datatype_invalid
   compute_input_typeB: hipblaslt_datatype_invalid
   scale_type: hipblaslt_datatype_invalid
+  dA: 0
+  dB: 0
+  dC: 0
+  dD: 0
+  dE: 0
+  dScaleA: 0
+  dScaleB: 0
+  dScaleC: 0
+  dScaleD: 0
+  dScaleE: 0
+  dBias: 0
+  dScaleAlphaVec: 0
+  dAmaxD: 0

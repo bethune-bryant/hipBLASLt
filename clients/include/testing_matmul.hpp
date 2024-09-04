@@ -975,16 +975,17 @@ void testing_matmul_with_bias(const Arguments& arg)
             epilogue_on[i] = true;
         }
 
+        
         // allocate memory on device
-        dA[i] = new device_vector<TiA>(size_A[i] * block_count, 1, HMM);
-        dB[i] = new device_vector<TiB>(size_B[i] * block_count, 1, HMM);
-        dC[i] = new device_vector<To>(size_C[i] * block_count, 1, HMM);
+        dA[i] = new device_vector<TiA>(arg.dA, size_A[i] * block_count, 1, HMM);
+        dB[i] = new device_vector<TiB>(arg.dB, size_B[i] * block_count, 1, HMM);
+        dC[i] = new device_vector<To>(arg.dC, size_C[i] * block_count, 1, HMM);
         if(!arg.c_equal_d)
-            dD[i] = new device_vector<To>(size_D[i] * block_count, 1, HMM);
+            dD[i] = new device_vector<To>(arg.dD, size_D[i] * block_count, 1, HMM);
         else
             dD[i] = dC[i];
-        dBias[i]          = new device_vector<Tbias>(size_bias[i] * block_count, 1, HMM);
-        dScaleAlphaVec[i] = new device_vector<Talpha>(size_scaleAlphaVec[i] * block_count, 1, HMM);
+        dBias[i]          = new device_vector<Tbias>(arg.dBias, size_bias[i] * block_count, 1, HMM);
+        dScaleAlphaVec[i] = new device_vector<Talpha>(arg.dScaleAlphaVec, size_scaleAlphaVec[i] * block_count, 1, HMM);
 
         CHECK_DEVICE_ALLOCATION(dA[i]->memcheck());
         CHECK_DEVICE_ALLOCATION(dB[i]->memcheck());
@@ -995,7 +996,7 @@ void testing_matmul_with_bias(const Arguments& arg)
         CHECK_DEVICE_ALLOCATION(dScaleAlphaVec[i]->memcheck());
         if(arg.use_e)
         {
-            dE[i] = new device_vector<To>(size_E[i] * block_count, 1, HMM);
+            dE[i] = new device_vector<To>(arg.dE, size_E[i] * block_count, 1, HMM);
             CHECK_DEVICE_ALLOCATION(dE[i]->memcheck());
         }
         else
@@ -1005,259 +1006,265 @@ void testing_matmul_with_bias(const Arguments& arg)
 
         if(arg.scaleA)
         {
-            dScaleA[i] = new device_vector<Talpha>(size_scaleAVec[i] * block_count, 1, HMM);
+            dScaleA[i] = new device_vector<Talpha>(arg.dScaleA, size_scaleAVec[i] * block_count, 1, HMM);
             CHECK_DEVICE_ALLOCATION(dScaleA[i]->memcheck());
         }
         if(arg.scaleB)
         {
-            dScaleB[i] = new device_vector<Talpha>(size_scaleBVec[i] * block_count, 1, HMM);
+            dScaleB[i] = new device_vector<Talpha>(arg.dScaleB, size_scaleBVec[i] * block_count, 1, HMM);
             CHECK_DEVICE_ALLOCATION(dScaleB[i]->memcheck());
         }
         if(arg.scaleC)
         {
-            dScaleC[i] = new device_vector<Talpha>(1, 1, HMM);
+            dScaleC[i] = new device_vector<Talpha>(arg.dScaleC, 1, 1, HMM);
             CHECK_DEVICE_ALLOCATION(dScaleC[i]->memcheck());
         }
         if(arg.scaleD)
         {
-            dScaleD[i] = new device_vector<Talpha>(1, 1, HMM);
+            dScaleD[i] = new device_vector<Talpha>(arg.dScaleD, 1, 1, HMM);
             CHECK_DEVICE_ALLOCATION(dScaleD[i]->memcheck());
         }
         if(arg.amaxD)
         {
             epilogue_on[i] = true;
-            dAmaxD[i]      = new device_vector<Talpha>(1, 1, HMM);
+            dAmaxD[i]      = new device_vector<Talpha>(arg.dAmaxD, 1, 1, HMM);
             CHECK_DEVICE_ALLOCATION(dAmaxD[i]->memcheck());
         }
         if(arg.scaleE)
         {
-            dScaleE[i] = new device_vector<Talpha>(1, 1, HMM);
+            dScaleE[i] = new device_vector<Talpha>(arg.dScaleE, 1, 1, HMM);
             CHECK_DEVICE_ALLOCATION(dScaleE[i]->memcheck());
         }
-
         // Naming: dX is in GPU (device) memory. hK is in CPU (host) memory
-        hA[i]                 = new host_vector<TiA>(size_A[i]);
-        hB[i]                 = new host_vector<TiB>(size_B[i]);
-        hC[i]                 = new host_vector<To>(size_C[i]);
-        hD_gold[i]            = new host_vector<To>(size_D_copy[i]);
-        hD_gold_epl[i]        = new host_vector<Talpha>(size_D_copy[i]);
-        hD_gold_ScaleAlpha[i] = new host_vector<Talpha>(size_D_copy[i]);
-        hD_1[i]               = new host_vector<To>(size_D_copy[i]);
-        hBias[i]              = new host_vector<Tbias>(size_bias[i]);
-        hBias_gold[i]         = new host_vector<Tbias>(size_bias[i]);
-        hBias_gold_epl[i]     = new host_vector<Talpha>(size_D_copy[i]); // Reduction for matrix D
-        hScaleAlphaVec[i]     = new host_vector<Talpha>(size_scaleAlphaVec[i]);
-
-        if(arg.scaleA)
-            hScaleA[i] = new host_vector<Talpha>(size_scaleAVec[i]);
-        if(arg.scaleB)
-            hScaleB[i] = new host_vector<Talpha>(size_scaleBVec[i]);
-        if(arg.scaleC)
-            hScaleC[i] = new host_vector<Talpha>(1);
-        if(arg.scaleD)
-            hScaleD[i] = new host_vector<Talpha>(1);
-        if(arg.amaxD)
+        
+        if(arg.dA == nullptr)
         {
-            hAmaxD_gold[i] = new host_vector<Talpha>(1);
-            hAmaxD[i]      = new host_vector<Talpha>(1);
-        }
-        if(arg.scaleE)
-            hScaleE[i] = new host_vector<Talpha>(1);
+            hA[i]                 = new host_vector<TiA>(size_A[i]);
+            hB[i]                 = new host_vector<TiB>(size_B[i]);
+            hC[i]                 = new host_vector<To>(size_C[i]);
+            hD_gold[i]            = new host_vector<To>(size_D_copy[i]);
+            hD_gold_epl[i]        = new host_vector<Talpha>(size_D_copy[i]);
+            hD_gold_ScaleAlpha[i] = new host_vector<Talpha>(size_D_copy[i]);
+            hD_1[i]               = new host_vector<To>(size_D_copy[i]);
+            hBias[i]              = new host_vector<Tbias>(size_bias[i]);
+            hBias_gold[i]         = new host_vector<Tbias>(size_bias[i]);
+            hBias_gold_epl[i]     = new host_vector<Talpha>(size_D_copy[i]); // Reduction for matrix D
+            hScaleAlphaVec[i]     = new host_vector<Talpha>(size_scaleAlphaVec[i]);
 
-        if(arg.use_e)
-        {
-            hE[i] = new host_vector<To>(size_E[i]);
-            if(!arg.gradient)
-                hE_gold[i] = new host_vector<To>(size_E[i]);
-        }
-
-        hipblaslt_seedrand();
-
-        // Initial Data on CPU
-        if(arg.alpha_isnan<Tc>())
-        {
-            hipblaslt_init_nan<TiA>(
-                *hA[i], A_row[i], A_col[i], lda[i], stride_a[i], num_batches[i]);
-            hipblaslt_init_nan<TiB>(
-                *hB[i], B_row[i], B_col[i], ldb[i], stride_b[i], num_batches[i]);
-        }
-        else
-        {
-            if(arg.initialization == hipblaslt_initialization::rand_int)
+            if(arg.scaleA)
+                hScaleA[i] = new host_vector<Talpha>(size_scaleAVec[i]);
+            if(arg.scaleB)
+                hScaleB[i] = new host_vector<Talpha>(size_scaleBVec[i]);
+            if(arg.scaleC)
+                hScaleC[i] = new host_vector<Talpha>(1);
+            if(arg.scaleD)
+                hScaleD[i] = new host_vector<Talpha>(1);
+            if(arg.amaxD)
             {
-                hipblaslt_init<TiA>(
+                hAmaxD_gold[i] = new host_vector<Talpha>(1);
+                hAmaxD[i]      = new host_vector<Talpha>(1);
+            }
+            if(arg.scaleE)
+                hScaleE[i] = new host_vector<Talpha>(1);
+
+            if(arg.use_e)
+            {
+                hE[i] = new host_vector<To>(size_E[i]);
+                if(!arg.gradient)
+                    hE_gold[i] = new host_vector<To>(size_E[i]);
+            }
+
+            hipblaslt_seedrand();
+            // Initial Data on CPU
+            if(arg.alpha_isnan<Tc>())
+            {
+                hipblaslt_init_nan<TiA>(
                     *hA[i], A_row[i], A_col[i], lda[i], stride_a[i], num_batches[i]);
-                hipblaslt_init_alternating_sign<TiB>(
+                hipblaslt_init_nan<TiB>(
                     *hB[i], B_row[i], B_col[i], ldb[i], stride_b[i], num_batches[i]);
-            }
-            else if(arg.initialization == hipblaslt_initialization::trig_float)
-            {
-                hipblaslt_init_sin<TiA>(
-                    *hA[i], A_row[i], A_col[i], lda[i], stride_a[i], num_batches[i]);
-                hipblaslt_init_cos<TiB>(
-                    *hB[i], B_row[i], B_col[i], ldb[i], stride_b[i], num_batches[i]);
-            }
-            else if(arg.initialization == hipblaslt_initialization::hpl)
-            {
-                hipblaslt_init_hpl<TiA>(
-                    *hA[i], A_row[i], A_col[i], lda[i], stride_a[i], num_batches[i]);
-                hipblaslt_init_hpl<TiB>(
-                    *hB[i], B_row[i], B_col[i], ldb[i], stride_b[i], num_batches[i]);
-            }
-            else if(arg.initialization == hipblaslt_initialization::special)
-            {
-                hipblaslt_init_alt_impl_big<TiA>(
-                    *hA[i], A_row[i], A_col[i], lda[i], num_batches[i]);
-                hipblaslt_init_alt_impl_small<TiB>(
-                    *hB[i], B_row[i], B_col[i], ldb[i], num_batches[i]);
-            }
-            else if(arg.initialization == hipblaslt_initialization::zero)
-            {
-                hipblaslt_init_zero<TiA>(
-                    *hA[i], A_row[i], A_col[i], lda[i], stride_a[i], num_batches[i]);
-                hipblaslt_init_zero<TiB>(
-                    *hB[i], B_row[i], B_col[i], ldb[i], stride_b[i], num_batches[i]);
-            }
-        }
-
-        if(arg.beta_isnan<Tc>())
-        {
-            hipblaslt_init_nan<To>(*hC[i], M[i], N[i], ldc[i], stride_c[i], num_batches[i]);
-        }
-        else
-        {
-            if(arg.initialization == hipblaslt_initialization::rand_int)
-                hipblaslt_init<To>(*hC[i], M[i], N[i], ldc[i], stride_c[i], num_batches[i]);
-            else if(arg.initialization == hipblaslt_initialization::trig_float)
-                hipblaslt_init_sin<To>(*hC[i], M[i], N[i], ldc[i], stride_c[i], num_batches[i]);
-            else if(arg.initialization == hipblaslt_initialization::hpl)
-                hipblaslt_init_hpl<To>(*hC[i], M[i], N[i], ldc[i], stride_c[i], num_batches[i]);
-            else if(arg.initialization == hipblaslt_initialization::special)
-                hipblaslt_init<To>(*hC[i], M[i], N[i], ldc[i], stride_c[i], num_batches[i]);
-            else if(arg.initialization == hipblaslt_initialization::zero)
-                hipblaslt_init_zero<To>(*hC[i], M[i], N[i], ldc[i], stride_c[i], num_batches[i]);
-        }
-
-        if(arg.gradient && arg.use_e)
-        {
-            hipblaslt_init<To>(*hE[i], M[i], N[i], lde[i], stride_e[i], num_batches[i]);
-        }
-
-        if(arg.bias_vector)
-        {
-            hipblaslt_init<Tbias>(*hBias[i], size_bias[i], 1, size_bias[i]);
-        }
-
-        if(arg.scaleA)
-            hipblaslt_init<Talpha>(*hScaleA[i], size_scaleAVec[i], 1, size_scaleAVec[i]);
-
-        if(arg.scaleB)
-            hipblaslt_init<Talpha>(*hScaleB[i], size_scaleBVec[i], 1, size_scaleBVec[i]);
-
-        if(arg.scaleC)
-        {
-            if constexpr(std::is_same<To, hipblaslt_f8_fnuz>::value
-                         || std::is_same<To, hipblaslt_bf8_fnuz>::value)
-            {
-                hipblaslt_init_small<Talpha>(*hScaleC[i], 1, 1, 1);
             }
             else
             {
-                hipblaslt_init<Talpha>(*hScaleC[i], 1, 1, 1);
+                if(arg.initialization == hipblaslt_initialization::rand_int)
+                {
+                    hipblaslt_init<TiA>(
+                        *hA[i], A_row[i], A_col[i], lda[i], stride_a[i], num_batches[i]);
+                    hipblaslt_init_alternating_sign<TiB>(
+                        *hB[i], B_row[i], B_col[i], ldb[i], stride_b[i], num_batches[i]);
+                }
+                else if(arg.initialization == hipblaslt_initialization::trig_float)
+                {
+                    hipblaslt_init_sin<TiA>(
+                        *hA[i], A_row[i], A_col[i], lda[i], stride_a[i], num_batches[i]);
+                    hipblaslt_init_cos<TiB>(
+                        *hB[i], B_row[i], B_col[i], ldb[i], stride_b[i], num_batches[i]);
+                }
+                else if(arg.initialization == hipblaslt_initialization::hpl)
+                {
+                    hipblaslt_init_hpl<TiA>(
+                        *hA[i], A_row[i], A_col[i], lda[i], stride_a[i], num_batches[i]);
+                    hipblaslt_init_hpl<TiB>(
+                        *hB[i], B_row[i], B_col[i], ldb[i], stride_b[i], num_batches[i]);
+                }
+                else if(arg.initialization == hipblaslt_initialization::special)
+                {
+                    hipblaslt_init_alt_impl_big<TiA>(
+                        *hA[i], A_row[i], A_col[i], lda[i], num_batches[i]);
+                    hipblaslt_init_alt_impl_small<TiB>(
+                        *hB[i], B_row[i], B_col[i], ldb[i], num_batches[i]);
+                }
+                else if(arg.initialization == hipblaslt_initialization::zero)
+                {
+                    hipblaslt_init_zero<TiA>(
+                        *hA[i], A_row[i], A_col[i], lda[i], stride_a[i], num_batches[i]);
+                    hipblaslt_init_zero<TiB>(
+                        *hB[i], B_row[i], B_col[i], ldb[i], stride_b[i], num_batches[i]);
+                }
             }
-        }
 
-        if(arg.scaleD)
-        {
-            if constexpr(std::is_same<To, hipblaslt_f8_fnuz>::value
-                         || std::is_same<To, hipblaslt_bf8_fnuz>::value)
+            if(arg.beta_isnan<Tc>())
             {
-                hipblaslt_init_small<Talpha>(*hScaleD[i], 1, 1, 1);
+                hipblaslt_init_nan<To>(*hC[i], M[i], N[i], ldc[i], stride_c[i], num_batches[i]);
             }
             else
             {
-                hipblaslt_init<Talpha>(*hScaleD[i], 1, 1, 1);
+                if(arg.initialization == hipblaslt_initialization::rand_int)
+                    hipblaslt_init<To>(*hC[i], M[i], N[i], ldc[i], stride_c[i], num_batches[i]);
+                else if(arg.initialization == hipblaslt_initialization::trig_float)
+                    hipblaslt_init_sin<To>(*hC[i], M[i], N[i], ldc[i], stride_c[i], num_batches[i]);
+                else if(arg.initialization == hipblaslt_initialization::hpl)
+                    hipblaslt_init_hpl<To>(*hC[i], M[i], N[i], ldc[i], stride_c[i], num_batches[i]);
+                else if(arg.initialization == hipblaslt_initialization::special)
+                    hipblaslt_init<To>(*hC[i], M[i], N[i], ldc[i], stride_c[i], num_batches[i]);
+                else if(arg.initialization == hipblaslt_initialization::zero)
+                    hipblaslt_init_zero<To>(*hC[i], M[i], N[i], ldc[i], stride_c[i], num_batches[i]);
+            }
+
+            if(arg.gradient && arg.use_e)
+            {
+                hipblaslt_init<To>(*hE[i], M[i], N[i], lde[i], stride_e[i], num_batches[i]);
+            }
+
+            if(arg.bias_vector)
+            {
+                hipblaslt_init<Tbias>(*hBias[i], size_bias[i], 1, size_bias[i]);
+            }
+
+            if(arg.scaleA)
+                hipblaslt_init<Talpha>(*hScaleA[i], size_scaleAVec[i], 1, size_scaleAVec[i]);
+
+            if(arg.scaleB)
+                hipblaslt_init<Talpha>(*hScaleB[i], size_scaleBVec[i], 1, size_scaleBVec[i]);
+
+            if(arg.scaleC)
+            {
+                if constexpr(std::is_same<To, hipblaslt_f8_fnuz>::value
+                            || std::is_same<To, hipblaslt_bf8_fnuz>::value)
+                {
+                    hipblaslt_init_small<Talpha>(*hScaleC[i], 1, 1, 1);
+                }
+                else
+                {
+                    hipblaslt_init<Talpha>(*hScaleC[i], 1, 1, 1);
+                }
+            }
+
+            if(arg.scaleD)
+            {
+                if constexpr(std::is_same<To, hipblaslt_f8_fnuz>::value
+                            || std::is_same<To, hipblaslt_bf8_fnuz>::value)
+                {
+                    hipblaslt_init_small<Talpha>(*hScaleD[i], 1, 1, 1);
+                }
+                else
+                {
+                    hipblaslt_init<Talpha>(*hScaleD[i], 1, 1, 1);
+                }
+            }
+
+            if(arg.amaxD)
+                hipblaslt_init_zero<Talpha>(*hAmaxD_gold[i], 1, 1, 1);
+
+            if(arg.scaleE)
+                hipblaslt_init<Talpha>(*hScaleE[i], 1, 1, 1);
+
+            if(arg.scaleAlpha_vector)
+                hipblaslt_init<Talpha>(*hScaleAlphaVec[i], M[i], 1, M[i]);
+
+            // copy data from CPU to device
+            CHECK_HIP_ERROR(dA[i]->transfer_from(*hA[i], block_count));
+            CHECK_HIP_ERROR(dB[i]->transfer_from(*hB[i], block_count));
+            CHECK_HIP_ERROR(dC[i]->transfer_from(*hC[i], block_count));
+            
+            if(arg.gradient && arg.use_e)
+            {
+                CHECK_HIP_ERROR(dE[i]->transfer_from(*hE[i], block_count));
+            }
+            if(!arg.gradient && arg.bias_vector)
+            {
+                CHECK_HIP_ERROR(dBias[i]->transfer_from(*hBias[i], block_count));
+            }
+            
+            if(arg.scaleAlpha_vector)
+            {
+                CHECK_HIP_ERROR(dScaleAlphaVec[i]->transfer_from(*hScaleAlphaVec[i], block_count));
+                alpha_in[i] = *(dScaleAlphaVec[i]);
+                h_alpha[i]  = 1.0; // use dScaleAlphaVec instead, original alpha = 1.0 for verify
+            }
+            else
+                alpha_in[i] = &(h_alpha[i]);
+
+            if(arg.scaleA)
+            {
+                if(arg.amaxScaleA && (arg.a_type == HIP_R_32F || arg.a_type == HIP_R_16F))
+                {
+                    CHECK_HIPBLASLT_ERROR(hipblasltExtAMax(
+                        arg.a_type, HIP_R_32F, *dScaleA[i], *dA[i], A_row[i], A_col[i], stream));
+                    CHECK_HIP_ERROR(hScaleA[i]->transfer_from(*dScaleA[i]));
+                }
+                else
+                    CHECK_HIP_ERROR(dScaleA[i]->transfer_from(*hScaleA[i]));
+            }
+
+            if(arg.scaleB)
+            {
+                if(arg.amaxScaleB && (arg.b_type == HIP_R_32F || arg.b_type == HIP_R_16F))
+                {
+                    CHECK_HIPBLASLT_ERROR(hipblasltExtAMax(
+                        arg.b_type, HIP_R_32F, *dScaleB[i], *dB[i], B_row[i], B_col[i], stream));
+                    CHECK_HIP_ERROR(hScaleB[i]->transfer_from(*dScaleB[i]));
+                }
+                else
+                    CHECK_HIP_ERROR(dScaleB[i]->transfer_from(*hScaleB[i]));
+            }
+            
+            if(arg.scaleC)
+                CHECK_HIP_ERROR(dScaleC[i]->transfer_from(*hScaleC[i]));
+
+            if(arg.scaleD)
+                CHECK_HIP_ERROR(dScaleD[i]->transfer_from(*hScaleD[i]));
+
+            if(arg.scaleE)
+                CHECK_HIP_ERROR(dScaleE[i]->transfer_from(*hScaleE[i]));
+            //// copy data from CPU to device end
+            if(size_D_copy[i])
+            {
+                if(epilogue_on[i])
+                {
+                    std::transform(hC[i]->begin(),
+                                hC[i]->end(),
+                                hD_gold_epl[i]->begin(),
+                                [](To c) -> Talpha { return static_cast<Talpha>(c); });
+                }
+                else
+                {
+                    std::copy(hC[i]->begin(), hC[i]->end(), hD_gold[i]->begin());
+                }
             }
         }
-
-        if(arg.amaxD)
-            hipblaslt_init_zero<Talpha>(*hAmaxD_gold[i], 1, 1, 1);
-
-        if(arg.scaleE)
-            hipblaslt_init<Talpha>(*hScaleE[i], 1, 1, 1);
-
-        if(arg.scaleAlpha_vector)
-            hipblaslt_init<Talpha>(*hScaleAlphaVec[i], M[i], 1, M[i]);
-
-        // copy data from CPU to device
-        CHECK_HIP_ERROR(dA[i]->transfer_from(*hA[i], block_count));
-        CHECK_HIP_ERROR(dB[i]->transfer_from(*hB[i], block_count));
-        CHECK_HIP_ERROR(dC[i]->transfer_from(*hC[i], block_count));
-        if(arg.gradient && arg.use_e)
+        else
         {
-            CHECK_HIP_ERROR(dE[i]->transfer_from(*hE[i], block_count));
-        }
-        if(!arg.gradient && arg.bias_vector)
-        {
-            CHECK_HIP_ERROR(dBias[i]->transfer_from(*hBias[i], block_count));
-        }
-
-        if(arg.scaleAlpha_vector)
-        {
-            CHECK_HIP_ERROR(dScaleAlphaVec[i]->transfer_from(*hScaleAlphaVec[i], block_count));
             alpha_in[i] = *(dScaleAlphaVec[i]);
-            h_alpha[i]  = 1.0; // use dScaleAlphaVec instead, original alpha = 1.0 for verify
-        }
-        else
-            alpha_in[i] = &(h_alpha[i]);
-
-        if(arg.scaleA)
-        {
-            if(arg.amaxScaleA && (arg.a_type == HIP_R_32F || arg.a_type == HIP_R_16F))
-            {
-                CHECK_HIPBLASLT_ERROR(hipblasltExtAMax(
-                    arg.a_type, HIP_R_32F, *dScaleA[i], *dA[i], A_row[i], A_col[i], stream));
-                CHECK_HIP_ERROR(hScaleA[i]->transfer_from(*dScaleA[i]));
-            }
-            else
-                CHECK_HIP_ERROR(dScaleA[i]->transfer_from(*hScaleA[i]));
-        }
-
-        if(arg.scaleB)
-        {
-            if(arg.amaxScaleB && (arg.b_type == HIP_R_32F || arg.b_type == HIP_R_16F))
-            {
-                CHECK_HIPBLASLT_ERROR(hipblasltExtAMax(
-                    arg.b_type, HIP_R_32F, *dScaleB[i], *dB[i], B_row[i], B_col[i], stream));
-                CHECK_HIP_ERROR(hScaleB[i]->transfer_from(*dScaleB[i]));
-            }
-            else
-                CHECK_HIP_ERROR(dScaleB[i]->transfer_from(*hScaleB[i]));
-        }
-
-        if(arg.scaleC)
-            CHECK_HIP_ERROR(dScaleC[i]->transfer_from(*hScaleC[i]));
-
-        if(arg.scaleD)
-            CHECK_HIP_ERROR(dScaleD[i]->transfer_from(*hScaleD[i]));
-
-        if(arg.scaleE)
-            CHECK_HIP_ERROR(dScaleE[i]->transfer_from(*hScaleE[i]));
-        //// copy data from CPU to device end
-
-        if(size_D_copy[i])
-        {
-            if(epilogue_on[i])
-            {
-                std::transform(hC[i]->begin(),
-                               hC[i]->end(),
-                               hD_gold_epl[i]->begin(),
-                               [](To c) -> Talpha { return static_cast<Talpha>(c); });
-            }
-            else
-            {
-                std::copy(hC[i]->begin(), hC[i]->end(), hD_gold[i]->begin());
-            }
         }
 
         if(epilogue_on[i])
@@ -2141,59 +2148,63 @@ void testing_matmul_with_bias(const Arguments& arg)
     {
         for(int i = 0; i < gemm_count; i++)
         {
-            delete hA[i];
-            delete hB[i];
-            delete hC[i];
-            delete hD_gold[i];
-            delete hD_gold_epl[i];
-            delete hD_gold_ScaleAlpha[i];
-            delete hD_1[i];
-            delete hBias[i];
-            delete hBias_gold_epl[i];
-            delete hBias_gold[i];
-            delete hScaleAlphaVec[i];
-            delete dA[i];
-            delete dB[i];
-            delete dC[i];
-            if(!arg.c_equal_d)
-                delete dD[i];
-            delete dBias[i];
-            delete dScaleAlphaVec[i];
-            if(arg.scaleA)
+            
+            if(arg.dA == nullptr)
             {
-                delete hScaleA[i];
-                delete dScaleA[i];
-            }
-            if(arg.scaleB)
-            {
-                delete hScaleB[i];
-                delete dScaleB[i];
-            }
-            if(arg.scaleC)
-            {
-                delete hScaleC[i];
-                delete dScaleC[i];
-            }
-            if(arg.scaleD)
-            {
-                delete hScaleD[i];
-                delete dScaleD[i];
-            }
-            if(arg.amaxD)
-            {
-                delete hAmaxD_gold[i];
-                delete hAmaxD[i];
-                delete dAmaxD[i];
-            }
-            if(arg.scaleE)
-            {
-                delete hScaleE[i];
-                delete dScaleE[i];
-            }
-            if(arg.use_e)
-            {
-                delete dE[i];
-                delete hE[i];
+                delete hA[i];
+                delete hB[i];
+                delete hC[i];
+                delete hD_gold[i];
+                delete hD_gold_epl[i];
+                delete hD_gold_ScaleAlpha[i];
+                delete hD_1[i];
+                delete hBias[i];
+                delete hBias_gold_epl[i];
+                delete hBias_gold[i];
+                delete hScaleAlphaVec[i];
+                delete dA[i];
+                delete dB[i];
+                delete dC[i];
+                if(!arg.c_equal_d)
+                    delete dD[i];
+                delete dBias[i];
+                delete dScaleAlphaVec[i];
+                if(arg.scaleA)
+                {
+                    delete hScaleA[i];
+                    delete dScaleA[i];
+                }
+                if(arg.scaleB)
+                {
+                    delete hScaleB[i];
+                    delete dScaleB[i];
+                }
+                if(arg.scaleC)
+                {
+                    delete hScaleC[i];
+                    delete dScaleC[i];
+                }
+                if(arg.scaleD)
+                {
+                    delete hScaleD[i];
+                    delete dScaleD[i];
+                }
+                if(arg.amaxD)
+                {
+                    delete hAmaxD_gold[i];
+                    delete hAmaxD[i];
+                    delete dAmaxD[i];
+                }
+                if(arg.scaleE)
+                {
+                    delete hScaleE[i];
+                    delete dScaleE[i];
+                }
+                if(arg.use_e)
+                {
+                    delete dE[i];
+                    delete hE[i];
+                }
             }
         }
         int             deviceId;
@@ -3000,9 +3011,12 @@ void testing_matmul_with_bias(const Arguments& arg)
 
     for(int i = 0; i < gemm_count; i++)
     {
-        delete hA[i];
-        delete hB[i];
-        delete hC[i];
+        if(arg.dA == nullptr)
+        {
+            delete hA[i];
+            delete hB[i];
+            delete hC[i];
+        }
         delete hD_gold[i];
         delete hD_gold_epl[i];
         delete hD_gold_ScaleAlpha[i];
