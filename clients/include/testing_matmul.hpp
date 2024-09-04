@@ -3016,57 +3016,57 @@ void testing_matmul_with_bias(const Arguments& arg)
             delete hA[i];
             delete hB[i];
             delete hC[i];
-        }
-        delete hD_gold[i];
-        delete hD_gold_epl[i];
-        delete hD_gold_ScaleAlpha[i];
-        delete hD_1[i];
-        delete hBias[i];
-        delete hBias_gold_epl[i];
-        delete hBias_gold[i];
-        delete hScaleAlphaVec[i];
-        delete dA[i];
-        delete dB[i];
-        delete dC[i];
-        if(!arg.c_equal_d)
-            delete dD[i];
-        delete dBias[i];
-        delete dScaleAlphaVec[i];
-        if(arg.scaleA)
-        {
-            delete hScaleA[i];
-            delete dScaleA[i];
-        }
-        if(arg.scaleB)
-        {
-            delete hScaleB[i];
-            delete dScaleB[i];
-        }
-        if(arg.scaleC)
-        {
-            delete hScaleC[i];
-            delete dScaleC[i];
-        }
-        if(arg.scaleD)
-        {
-            delete hScaleD[i];
-            delete dScaleD[i];
-        }
-        if(arg.amaxD)
-        {
-            delete hAmaxD_gold[i];
-            delete hAmaxD[i];
-            delete dAmaxD[i];
-        }
-        if(arg.scaleE)
-        {
-            delete hScaleE[i];
-            delete dScaleE[i];
-        }
-        if(arg.use_e)
-        {
-            delete dE[i];
-            delete hE[i];
+            delete hD_gold[i];
+            delete hD_gold_epl[i];
+            delete hD_gold_ScaleAlpha[i];
+            delete hD_1[i];
+            delete hBias[i];
+            delete hBias_gold_epl[i];
+            delete hBias_gold[i];
+            delete hScaleAlphaVec[i];
+            delete dA[i];
+            delete dB[i];
+            delete dC[i];
+            if(!arg.c_equal_d)
+                delete dD[i];
+            delete dBias[i];
+            delete dScaleAlphaVec[i];
+            if(arg.scaleA)
+            {
+                delete hScaleA[i];
+                delete dScaleA[i];
+            }
+            if(arg.scaleB)
+            {
+                delete hScaleB[i];
+                delete dScaleB[i];
+            }
+            if(arg.scaleC)
+            {
+                delete hScaleC[i];
+                delete dScaleC[i];
+            }
+            if(arg.scaleD)
+            {
+                delete hScaleD[i];
+                delete dScaleD[i];
+            }
+            if(arg.amaxD)
+            {
+                delete hAmaxD_gold[i];
+                delete hAmaxD[i];
+                delete dAmaxD[i];
+            }
+            if(arg.scaleE)
+            {
+                delete hScaleE[i];
+                delete dScaleE[i];
+            }
+            if(arg.use_e)
+            {
+                delete dE[i];
+                delete hE[i];
+            }
         }
     }
 
