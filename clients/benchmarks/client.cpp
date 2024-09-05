@@ -230,11 +230,7 @@ void* setup_shared_matrix(size_t size, size_t batch_count, Arguments arg, std::s
 
     device_vector<data_type> dA(size * batch_count, 1, false, false);
 
-    if(init_mode == "" || init_mode == "rand_int")
-    {
-        hipblaslt_init<data_type>(*hA, size, 1, size, batch_count);
-    }
-    else if(init_mode == "alternating_sign")
+    if(init_mode == "alternating_sign")
     {
         hipblaslt_init_alternating_sign<data_type>(*hA, size, 1, size, batch_count);
     }
@@ -261,6 +257,10 @@ void* setup_shared_matrix(size_t size, size_t batch_count, Arguments arg, std::s
     else if(init_mode == "zero")
     {
         hipblaslt_init_zero<data_type>(*hA, size, 1, size, batch_count);
+    }
+    else
+    {
+        hipblaslt_init<data_type>(*hA, size, 1, size, batch_count);
     }
 
     CHECK_HIP_ERROR(dA.transfer_from(*hA, 1));
