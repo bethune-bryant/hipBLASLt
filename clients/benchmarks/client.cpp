@@ -224,13 +224,44 @@ int run_bench_test(Arguments& arg, const std::string& filter, bool any_stride, b
 }
 
 template <typename data_type>
-void* setup_shared_matrix(size_t size, size_t batch_count, Arguments arg)
+void* setup_shared_matrix(size_t size, size_t batch_count, Arguments arg, std::string init_mode="")
 {
     auto hA = new host_vector<data_type>(size * batch_count);
 
     device_vector<data_type> dA(size * batch_count, 1, false, false);
 
-    hipblaslt_init<data_type>(*hA, size, 1, size, batch_count);
+    if(init_mode == "" || init_mode == "rand_int")
+    {
+        hipblaslt_init<data_type>(*hA, size, 1, size, batch_count);
+    }
+    else if(init_mode == "alternating_sign")
+    {
+        hipblaslt_init_alternating_sign<data_type>(*hA, size, 1, size, batch_count);
+    }
+    else if(init_mode == "trig_float" || init_mode == "sin")
+    {
+        hipblaslt_init_sin<data_type>(*hA, size, 1, size, batch_count);
+    }
+    else if(init_mode == "cos")
+    {
+        hipblaslt_init_cos<data_type>(*hA, size, 1, size, batch_count);
+    }
+    else if(init_mode == "hpl")
+    {
+        hipblaslt_init_hpl<data_type>(*hA, size, 1, size, batch_count);
+    }
+    else if(init_mode == "special" || init_mode == "big")
+    {
+        hipblaslt_init_alt_impl_big<data_type>(*hA, size, 1, size, batch_count);
+    }
+    else if(init_mode == "small")
+    {
+        hipblaslt_init_alt_impl_small<data_type>(*hA, size, 1, size, batch_count);
+    }
+    else if(init_mode == "zero")
+    {
+        hipblaslt_init_zero<data_type>(*hA, size, 1, size, batch_count);
+    }
 
     CHECK_HIP_ERROR(dA.transfer_from(*hA, 1));
     
@@ -243,7 +274,7 @@ void* setup_shared_matrix(size_t size, size_t batch_count, Arguments arg)
     return dA;
 }
 
-void* setup_shared_matrix(size_t size, size_t batch_count,hipDataType type, Arguments arg)
+void* setup_shared_matrix(size_t size, size_t batch_count,hipDataType type, Arguments arg, std::string init_mode="")
 {
     switch(type)
     {
@@ -284,7 +315,7 @@ void* setup_shared_matrix(size_t size, size_t batch_count,hipDataType type, Argu
     }
 }
 
-void* setup_shared_matrix(size_t size, size_t batch_count,hipblasComputeType_t type, Arguments arg)
+void* setup_shared_matrix(size_t size, size_t batch_count,hipblasComputeType_t type, Arguments arg, std::string init_mode="")
 {
     switch(type)
     {
@@ -307,33 +338,117 @@ void setup_shared_memory(std::vector<Arguments>& args)
     {
         return;
     }
+
     hipblaslt_seedrand();
+
     auto maximal_arg = args[0];
-    void* dA = setup_shared_matrix(8320*8320,
-                                   maximal_arg.batch_count,
-                                   maximal_arg.a_type,
-                                   maximal_arg);
-    void* dB = setup_shared_matrix(8320*8320,
-                                   maximal_arg.batch_count,
-                                   maximal_arg.b_type,
-                                   maximal_arg);
-    void* dC = setup_shared_matrix(8320*8320,
+
+    size_t vector_size = 8320;
+    size_t matrix_size = vector_size * vector_size;
+
+    void* dA;
+    void* dB;
+
+    std::string init_mode = "";
+    switch(maximal_arg.initialization)
+    {
+        case(hipblaslt_initialization::rand_int):
+            init_mode = "rand_int";
+            dA = setup_shared_matrix(matrix_size,
+                                     maximal_arg.batch_count,
+                                     maximal_arg.a_type,
+                                     maximal_arg,
+                                     "rand_int");
+            dB = setup_shared_matrix(matrix_size,
+                                     maximal_arg.batch_count,
+                                     maximal_arg.b_type,
+                                     maximal_arg,
+                                     "alternating_sign");
+            break;
+        case(hipblaslt_initialization::trig_float):
+            init_mode = "trig_float";
+            dA = setup_shared_matrix(matrix_size,
+                                     maximal_arg.batch_count,
+                                     maximal_arg.a_type,
+                                     maximal_arg,
+                                     "sin");
+            dB = setup_shared_matrix(matrix_size,
+                                     maximal_arg.batch_count,
+                                     maximal_arg.b_type,
+                                     maximal_arg,
+                                     "cos");
+            break;
+        case(hipblaslt_initialization::hpl):
+            init_mode = "hpl";
+            dA = setup_shared_matrix(matrix_size,
+                                     maximal_arg.batch_count,
+                                     maximal_arg.a_type,
+                                     maximal_arg,
+                                     init_mode);
+            dB = setup_shared_matrix(matrix_size,
+                                     maximal_arg.batch_count,
+                                     maximal_arg.b_type,
+                                     maximal_arg,
+                                     init_mode);
+            break;
+        case(hipblaslt_initialization::special):
+            init_mode = "special";
+            dA = setup_shared_matrix(matrix_size,
+                                     maximal_arg.batch_count,
+                                     maximal_arg.a_type,
+                                     maximal_arg,
+                                     "big");
+            dB = setup_shared_matrix(matrix_size,
+                                     maximal_arg.batch_count,
+                                     maximal_arg.b_type,
+                                     maximal_arg,
+                                     "small");
+            break;
+        case(hipblaslt_initialization::zero):
+            init_mode = "zero";
+            dA = setup_shared_matrix(matrix_size,
+                                     maximal_arg.batch_count,
+                                     maximal_arg.a_type,
+                                     maximal_arg,
+                                     init_mode);
+            dB = setup_shared_matrix(matrix_size,
+                                     maximal_arg.batch_count,
+                                     maximal_arg.b_type,
+                                     maximal_arg,
+                                     init_mode);
+            break;
+        default:
+            init_mode = "";
+            dA = setup_shared_matrix(matrix_size,
+                                     maximal_arg.batch_count,
+                                     maximal_arg.a_type,
+                                     maximal_arg,
+                                     init_mode);
+            dB = setup_shared_matrix(matrix_size,
+                                     maximal_arg.batch_count,
+                                     maximal_arg.b_type,
+                                     maximal_arg,
+                                     init_mode);
+    }
+    void* dC = setup_shared_matrix(matrix_size,
                                    maximal_arg.batch_count,
                                    maximal_arg.c_type,
-                                   maximal_arg);
-    void* dD = setup_shared_matrix(8320*8320,
+                                   maximal_arg,
+                                   init_mode);
+    void* dD = setup_shared_matrix(matrix_size,
+                                   maximal_arg.batch_count,
+                                   maximal_arg.d_type,
+                                   maximal_arg,
+                                   "zero");
+    void* dE = setup_shared_matrix(vector_size,
                                    maximal_arg.batch_count,
                                    maximal_arg.d_type,
                                    maximal_arg);
-    void* dE = setup_shared_matrix(1000000,
-                                   maximal_arg.batch_count,
-                                   maximal_arg.d_type,
-                                   maximal_arg);
-    void* dScaleA = setup_shared_matrix(1000000,
+    void* dScaleA = setup_shared_matrix(vector_size,
                                    maximal_arg.batch_count,
                                    maximal_arg.compute_type,
                                    maximal_arg);
-    void* dScaleB = setup_shared_matrix(1000000,
+    void* dScaleB = setup_shared_matrix(vector_size,
                                    maximal_arg.batch_count,
                                    maximal_arg.compute_type,
                                    maximal_arg);
@@ -349,11 +464,11 @@ void setup_shared_memory(std::vector<Arguments>& args)
                                    maximal_arg.batch_count,
                                    maximal_arg.compute_type,
                                    maximal_arg);
-    void* dBias = setup_shared_matrix(1000000,
+    void* dBias = setup_shared_matrix(vector_size,
                                    maximal_arg.batch_count,
                                    maximal_arg.bias_type,
                                    maximal_arg);
-    void* dScaleAlphaVec = setup_shared_matrix(1000000,
+    void* dScaleAlphaVec = setup_shared_matrix(vector_size,
                                    maximal_arg.batch_count,
                                    maximal_arg.compute_type,
                                    maximal_arg);
