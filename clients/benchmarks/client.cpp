@@ -264,12 +264,6 @@ void* setup_shared_matrix(size_t size, size_t batch_count, Arguments arg, std::s
     }
 
     CHECK_HIP_ERROR(dA.transfer_from(*hA, 1));
-    
-    //host_matrix<data_type>                 hA(row, col, ld);
-    //CHECK_HIP_ERROR(hA.memcheck());
-    //rocblas_init_matrix<data_type>(
-    //    hA, arg, rocblas_client_alpha_sets_nan, rocblas_client_general_matrix, true);
-    //CHECK_HIP_ERROR(dA.broadcast_one_matrix_from(hA));
 
     return dA;
 }
