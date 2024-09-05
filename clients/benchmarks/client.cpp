@@ -343,8 +343,8 @@ void setup_shared_memory(std::vector<Arguments>& args)
 
     auto maximal_arg = args[0];
 
-    size_t vector_size = 8320;
-    size_t matrix_size = vector_size * vector_size;
+    size_t vector_size = 2000000;
+    size_t matrix_size = 10 * 8320 * 8320;
 
     void* dA;
     void* dB;
