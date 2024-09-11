@@ -170,6 +170,20 @@ struct Arguments
 
     bool flush;
 
+    void* dA;
+    void* dB;
+    void* dC;
+    void* dD;
+    void* dE;
+    void* dScaleA;
+    void* dScaleB;
+    void* dScaleC;
+    void* dScaleD;
+    void* dScaleE;
+    void* dBias;
+    void* dScaleAlphaVec;
+    void* dAmaxD;
+
     /*************************************************************************
      *                     End Of Arguments                                  *
      *************************************************************************/
